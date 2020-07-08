@@ -101,6 +101,40 @@ def experiment_obj(sagemaker_boto_client):
 
 
 @pytest.fixture
+def complex_experiment_obj(sagemaker_boto_client):
+    description = "{}-{}".format("description", str(uuid.uuid4()))
+    boto3.set_stream_logger("", logging.INFO)
+
+    # create experiment
+    experiment_obj_name = name()
+    experiment_obj = experiment.Experiment.create(
+        experiment_name=experiment_obj_name, description=description, sagemaker_boto_client=sagemaker_boto_client
+    )
+
+    # create trials
+    trial_objs = []
+    for trial_name in names():
+        next_trial = trial.Trial.create(
+            trial_name=trial_name, experiment_name=experiment_obj_name, sagemaker_boto_client=sagemaker_boto_client,
+        )
+        trial_objs.append(next_trial)
+
+    # create trial components
+    trial_component_obj = trial_component.TrialComponent.create(
+        trial_component_name=name(), sagemaker_boto_client=sagemaker_boto_client,
+    )
+
+    # associate the trials with trial components
+    for trial_obj in trial_objs:
+        sagemaker_boto_client.associate_trial_component(
+            TrialName=trial_obj.trial_name, TrialComponentName=trial_component_obj.trial_component_name
+        )
+    time.sleep(1.0)
+    yield experiment_obj
+    experiment_obj.delete_all(action="force--")
+
+
+@pytest.fixture
 def trial_obj(sagemaker_boto_client, experiment_obj):
     trial_obj = trial.Trial.create(
         trial_name=name(), experiment_name=experiment_obj.experiment_name, sagemaker_boto_client=sagemaker_boto_client
