@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains the TrialComponent class."""
-from smexperiments import _base_types, api_types
+from smexperiments import _base_types, api_types, tracker
 
 
 class TrialComponent(_base_types.Record):
@@ -94,6 +94,7 @@ class TrialComponent(_base_types.Record):
         "output_artifacts_to_remove",
     ]
     _boto_delete_members = ["trial_component_name"]
+    _tracker = None
 
     @classmethod
     def _boto_ignore(cls):
@@ -102,6 +103,17 @@ class TrialComponent(_base_types.Record):
     def save(self):
         """Save the state of this TrialComponent to SageMaker."""
         return self._invoke_api(self._boto_update_method, self._boto_update_members)
+
+    @property
+    def tracker(self):
+        if self._tracker is None:
+            self._tracker = tracker.Tracker.load(
+                trial_component_name=self.trial_component_name, sagemaker_boto_client=self.sagemaker_boto_client
+            )
+
+    def get_tracker(self):
+        """Create a tracker for this TrialComponent."""
+        return self._tracker
 
     def delete(self, force_disassociate=None):
         """Delete this TrialComponent from SageMaker.
